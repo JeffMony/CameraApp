@@ -10,6 +10,7 @@
         android:layout_height="wrap_content" />
 
     <LinearLayout
+        android:id="@+id/camera1_layout1"
         android:layout_marginTop="10dp"
         android:orientation="horizontal"
         android:layout_below="@+id/camera1_preview"
@@ -33,7 +34,29 @@
             android:text="切换"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
+
     </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_below="@+id/camera1_layout1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" >
+        <Button
+            android:id="@+id/recorder_btn"
+            android:text="开始录制"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+        
+        <Button
+            android:id="@+id/stop_recorder_btn"
+            android:text="停止录制"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+    </LinearLayout>
+
+
 
 
 </RelativeLayout>

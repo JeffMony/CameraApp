@@ -24,6 +24,10 @@ public class MediaUtils {
             return null;
         }
         File mediaStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        if (type == MEDIA_TYPE_VIDEO) {
+            mediaStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+        }
+
         if (!mediaStorageDir.exists()) {
             if (!mediaStorageDir.mkdirs()) {
                 LogUtils.w(TAG, "Failed to create dir");

@@ -5,6 +5,9 @@ import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.PixelFormat;
 import android.hardware.Camera;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -14,6 +17,7 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.jeffmony.cameraapp.utils.ImageUtils;
@@ -34,6 +38,8 @@ public class Camera1Activity extends AppCompatActivity implements View.OnClickLi
     private Button mFocusBtn;
     private Button mCaptureBtn;
     private Button mSwitchBtn;
+    private Button mRecorderBtn;
+    private Button mStopRecorderBtn;
 
     private Camera mCamera;
     private SurfaceHolder mPreviewSurfaceHolder;
@@ -50,6 +56,11 @@ public class Camera1Activity extends AppCompatActivity implements View.OnClickLi
     private Camera.CameraInfo mBackCameraInfo = null;
     private Camera.CameraInfo mFrontCameraInfo = null;
 
+    //录制视频相关的变量
+    private MediaRecorder mMediaRecorder;
+    private boolean mIsRecording;
+
+
     @Override
     protected void onCreate(@Nullable @org.jetbrains.annotations.Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,10 +70,14 @@ public class Camera1Activity extends AppCompatActivity implements View.OnClickLi
         mFocusBtn = findViewById(R.id.focus_btn);
         mCaptureBtn = findViewById(R.id.capture_btn);
         mSwitchBtn = findViewById(R.id.switch_btn);
+        mRecorderBtn = findViewById(R.id.recorder_btn);
+        mStopRecorderBtn = findViewById(R.id.stop_recorder_btn);
 
         mFocusBtn.setOnClickListener(this);
         mCaptureBtn.setOnClickListener(this);
         mSwitchBtn.setOnClickListener(this);
+        mRecorderBtn.setOnClickListener(this);
+        mStopRecorderBtn.setOnClickListener(this);
 
         initCameraInfo();
         mCameraPreview.getHolder().addCallback(new PreviewSurfaceCallback());
@@ -434,6 +449,69 @@ public class Camera1Activity extends AppCompatActivity implements View.OnClickLi
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private boolean prepareVideoRecorder() {
+        mMediaRecorder = new MediaRecorder();
+
+        //1.解锁camera
+        mCamera.unlock();
+        mMediaRecorder.setCamera(mCamera);
+
+        //2.设置camera音频和视频输出源
+        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+        mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+
+        //3.设置视频的质量
+        mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
+
+        //4.设置输出的路径
+        mMediaRecorder.setOutputFile(MediaUtils.getOutputMediaFile(this.getApplicationContext(), MediaUtils.MEDIA_TYPE_VIDEO));
+
+        //5.设置预览的界面
+        mMediaRecorder.setPreviewDisplay(mPreviewSurfaceHolder.getSurface());
+
+        try {
+            mMediaRecorder.prepare();
+        } catch (Exception e) {
+            releaseMediaRecorder();
+            LogUtils.w(TAG, "MediaRecorder prepare failed, exception = " + e.getMessage());
+            return false;
+        }
+        return true;
+    }
+
+    private void releaseMediaRecorder(){
+        if (mMediaRecorder != null) {
+            mMediaRecorder.reset();   // clear recorder configuration
+            mMediaRecorder.release(); // release the recorder object
+            mMediaRecorder = null;
+            mCamera.lock();           // lock camera for later use
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void startRecordVideo() {
+        if (!mIsRecording) {
+            if (prepareVideoRecorder()) {
+                mMediaRecorder.start();
+                mIsRecording = true;
+            } else {
+                releaseMediaRecorder();
+            }
+        }
+    }
+
+    private void stopRecordVideo() {
+        if (mIsRecording) {
+            mMediaRecorder.stop();
+            releaseMediaRecorder();
+            mCamera.lock();
+            mIsRecording = false;
+        }
+    }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onClick(View v) {
         if (v == mFocusBtn) {
@@ -442,6 +520,10 @@ public class Camera1Activity extends AppCompatActivity implements View.OnClickLi
             capturePicture();
         } else if (v == mSwitchBtn) {
             switchCamera();
+        } else if (v == mRecorderBtn) {
+            startRecordVideo();
+        } else if (v == mStopRecorderBtn) {
+            stopRecordVideo();
         }
     }
 }
