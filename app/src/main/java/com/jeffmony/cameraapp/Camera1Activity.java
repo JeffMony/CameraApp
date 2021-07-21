@@ -59,6 +59,8 @@ public class Camera1Activity extends AppCompatActivity implements View.OnClickLi
     //录制视频相关的变量
     private MediaRecorder mMediaRecorder;
     private boolean mIsRecording;
+    private int mVideoWidth = 0;
+    private int mVideoHeight = 0;
 
 
     @Override
@@ -243,6 +245,24 @@ public class Camera1Activity extends AppCompatActivity implements View.OnClickLi
         }
     }
 
+    //设置视频录制的实际分辨率大小
+    private void setVideoSize(int width, int height) {
+        Camera camera = mCamera;
+        if (camera != null && width != 0 && height != 0) {
+            float ratio = width * 1.0f / height;
+            Camera.Parameters parameters = camera.getParameters();
+            List<Camera.Size> supportedVideoSizes = parameters.getSupportedVideoSizes();
+            for (Camera.Size videoSize : supportedVideoSizes) {
+                float videoSizeRatio = videoSize.height * 1.0f / videoSize.width;
+                if (Math.abs(videoSizeRatio - ratio) < 0.001f) {
+                    mVideoWidth = videoSize.width;
+                    mVideoHeight = videoSize.height;
+                    break;
+                }
+            }
+        }
+    }
+
     private void setPreviewSurface(SurfaceHolder holder) {
         Camera camera = mCamera;
         if (camera != null && holder != null) {
@@ -300,6 +320,8 @@ public class Camera1Activity extends AppCompatActivity implements View.OnClickLi
             mPreviewSurfaceWidth = width;
             mPreviewSurfaceHeight = height;
             setPreviewSize(width, height);
+            setPictureSize(width, height);
+            setVideoSize(width, height);
 
             setPreviewSurface(holder);
             startPreview();
@@ -433,6 +455,7 @@ public class Camera1Activity extends AppCompatActivity implements View.OnClickLi
             openCamera(cameraId);
             setPreviewSize(mPreviewSurfaceWidth, mPreviewSurfaceHeight);
             setPictureSize(mPreviewSurfaceWidth, mPreviewSurfaceHeight);
+            setVideoSize(mPreviewSurfaceWidth, mPreviewSurfaceHeight);
             setPreviewSurface(previewHolder);
             startPreview();
         }
@@ -461,14 +484,24 @@ public class Camera1Activity extends AppCompatActivity implements View.OnClickLi
         mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
         mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
 
-        //3.设置视频的质量
+        //3.设置视频的质量,但是这样设置不够精细化，如果想设置的更加细致一些，可以拆开来设置
         mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
+        mMediaRecorder.setVideoSize(mVideoWidth, mVideoHeight);
 
         //4.设置输出的路径
         mMediaRecorder.setOutputFile(MediaUtils.getOutputMediaFile(this.getApplicationContext(), MediaUtils.MEDIA_TYPE_VIDEO));
 
         //5.设置预览的界面
         mMediaRecorder.setPreviewDisplay(mPreviewSurfaceHolder.getSurface());
+
+        //6.设置旋转的角度
+        if (mCurrentCameraId == mBackCameraId) {
+            mMediaRecorder.setOrientationHint(mOrientation);
+        } else if (mCurrentCameraId == mFrontCameraId) {
+            mMediaRecorder.setOrientationHint(360 - mOrientation);
+        } else {
+            throw new RuntimeException("No available camera");
+        }
 
         try {
             mMediaRecorder.prepare();
